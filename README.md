@@ -61,6 +61,7 @@ Text & image history · **native capture + annotation** · **OCR** · **voice no
 
 ### 🤖 AI: you pick the engine
 - **OpenAI** or **Google Gemini** for transcription. Bring your own key for either.
+- **Whisper local** (no key, audio never leaves the Mac): uses your installed [`mlx_whisper`](https://pypi.org/project/mlx-whisper/) (Apple Silicon, needs `ffmpeg`) and any `mlx-community/whisper-*` model already in your Hugging Face cache. Klip looks for the CLI in `~/.local/bin`, `/opt/homebrew/bin` and `/usr/local/bin`.
 - For **Gemini** you can pick the model (`gemini-flash-latest`, `-flash-lite-latest`, `-pro-latest`, `2.5-flash`, `2.5-pro`); for **OpenAI**, `gpt-4o-mini-transcribe` or `whisper-1`.
 - **Dictation language** is selectable (and auto-detect), so transcription is natural in your language.
 

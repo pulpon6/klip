@@ -264,9 +264,8 @@ final class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate, Audio
     private func transcribeInBackground(id: UUID?, url: URL, forceProvider: String? = nil) {
         transcribingCount += 1
         // Resolver el modelo del proveedor activo aquí, en el MainActor (evita leer Settings.shared
-        // desde el hilo de la transcripción). Gemini y OpenAI tienen su propio ajuste de modelo.
-        let model = Settings.shared.aiProvider == "gemini"
-            ? Settings.shared.geminiModel : Settings.shared.transcriptionModel
+        // desde el hilo de la transcripción). Cada proveedor tiene su propio ajuste de modelo.
+        let model = AIProvider.model(for: forceProvider ?? Settings.shared.aiProvider)
         let language = Settings.shared.transcriptionLanguage
         Task { @MainActor in
             defer { transcribingCount -= 1 }

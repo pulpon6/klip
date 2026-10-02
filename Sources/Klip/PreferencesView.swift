@@ -292,9 +292,14 @@ struct PreferencesView: View {
                 Picker(L10n.t("prefs.provider"), selection: $settings.aiProvider) {
                     Text("OpenAI").tag("openai")
                     Text("Google Gemini").tag("gemini")
+                    Text("Whisper local").tag("local")
                 }
                 .pickerStyle(.segmented)
-                if settings.aiProvider == "openai" {
+                if settings.aiProvider == "local" {
+                    Picker(L10n.t("prefs.model"), selection: $settings.localWhisperModel) {
+                        ForEach(LocalWhisperClient.installedModels(), id: \.self) { Text($0).tag($0) }
+                    }
+                } else if settings.aiProvider == "openai" {
                     Picker(L10n.t("prefs.model"), selection: $settings.transcriptionModel) {
                         ForEach(models, id: \.self) { Text($0).tag($0) }
                     }
@@ -307,13 +312,27 @@ struct PreferencesView: View {
                     Text(L10n.t("lang.auto")).tag("")
                     ForEach(dictationLanguages, id: \.code) { Text($0.name).tag($0.code) }
                 }
-                Toggle(settings.aiProvider == "gemini"
+                Toggle(settings.aiProvider == "local"
+                       ? "Usar la nube (\(AIProvider.displayName(AIProvider.other(of: "local")))) si Whisper local falla"
+                       : settings.aiProvider == "gemini"
                        ? "Usar OpenAI si Gemini falla"
                        : "Usar Gemini si OpenAI falla", isOn: $settings.transcriptionFallback)
-                Text(settings.aiProvider == "gemini"
-                     ? L10n.t("prefs.voice.useGemini")
-                     : L10n.t("prefs.voice.useOpenAI"))
-                    .font(.caption).foregroundStyle(.secondary)
+                if settings.aiProvider == "local" {
+                    if LocalWhisperClient.shared.isInstalled {
+                        Label("mlx_whisper encontrado. El audio no sale de tu Mac y no se necesita API key.",
+                              systemImage: "checkmark.circle.fill")
+                            .font(.caption).foregroundStyle(.green)
+                    } else {
+                        Label("No se encontró mlx_whisper (~/.local/bin, /opt/homebrew/bin, /usr/local/bin). Instálalo con: pip install mlx-whisper (requiere ffmpeg).",
+                              systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
+                } else {
+                    Text(settings.aiProvider == "gemini"
+                         ? L10n.t("prefs.voice.useGemini")
+                         : L10n.t("prefs.voice.useOpenAI"))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
 
             Section("Costo aproximado por transcripción") {

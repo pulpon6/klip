@@ -103,7 +103,10 @@ struct TranscriptionError: Error, LocalizedError {
 
     /// Clasifica un error subyacente (OpenAIError) como de clave o no.
     static func wrap(_ error: Error, provider: String) -> TranscriptionError {
-        let name = provider == "gemini" ? "Gemini" : "OpenAI"
+        let name = AIProvider.displayName(provider)
+        if let e = error as? LocalWhisperError {
+            return .init(provider: provider, isAuth: false, message: e.localizedDescription)
+        }
         if let e = error as? OpenAIError {
             switch e {
             case .missingAPIKey:
@@ -130,23 +133,55 @@ struct TranscriptionError: Error, LocalizedError {
 enum AIProvider {
     static var selected: String { Settings.shared.aiProvider }
 
+    static func displayName(_ provider: String) -> String {
+        switch provider {
+        case "gemini": return "Gemini"
+        case "local":  return "Whisper local"
+        default:       return "OpenAI"
+        }
+    }
+
     /// ¿Hay clave para el proveedor seleccionado (con respaldo a OpenAI si Gemini no tiene clave)?
+    /// Para "local" no hay clave: basta con que mlx_whisper esté instalado.
     static var hasKey: Bool {
+        if selected == "local" { return LocalWhisperClient.shared.isInstalled }
         if selected == "gemini" { return GeminiClient.shared.hasAPIKey || OpenAIClient.shared.hasAPIKey }
         return OpenAIClient.shared.hasAPIKey
     }
 
-    /// El "otro" proveedor (para el fallback simétrico).
-    static func other(of provider: String) -> String { provider == "gemini" ? "openai" : "gemini" }
+    /// El "otro" proveedor (para el fallback). Desde "local" se cae a la nube que tenga clave.
+    static func other(of provider: String) -> String {
+        switch provider {
+        case "local":  return GeminiClient.shared.hasAPIKey ? "gemini" : "openai"
+        case "gemini": return "openai"
+        default:       return "gemini"
+        }
+    }
 
     /// ¿Hay clave para un proveedor concreto?
     static func hasKey(for provider: String) -> Bool {
-        provider == "gemini" ? GeminiClient.shared.hasAPIKey : OpenAIClient.shared.hasAPIKey
+        switch provider {
+        case "local":  return LocalWhisperClient.shared.isInstalled
+        case "gemini": return GeminiClient.shared.hasAPIKey
+        default:       return OpenAIClient.shared.hasAPIKey
+        }
+    }
+
+    /// Modelo configurado para un proveedor (cada uno tiene su propio ajuste).
+    @MainActor static func model(for provider: String) -> String {
+        switch provider {
+        case "local":  return Settings.shared.localWhisperModel
+        case "gemini": return Settings.shared.geminiModel
+        default:       return Settings.shared.transcriptionModel
+        }
     }
 
     /// Transcribe con UN proveedor concreto (sin fallback). Lanza si no hay clave.
     private static func transcribeWith(_ provider: String, audioURL: URL,
                                        language: String?, model: String) async throws -> String {
+        if provider == "local" {
+            return try await LocalWhisperClient.shared.transcribe(audioURL: audioURL, language: language, model: model)
+        }
         if provider == "gemini" {
             guard GeminiClient.shared.hasAPIKey else { throw OpenAIError.missingAPIKey }
             return try await GeminiClient.shared.transcribe(audioURL: audioURL, language: language, model: model)
@@ -168,7 +203,8 @@ enum AIProvider {
         } catch {
             // Fallback automático: solo en flujo normal (no forzado), con switch activo y clave del otro.
             if forceProvider == nil, Settings.shared.transcriptionFallback, hasKey(for: secondary) {
-                do { return try await transcribeWith(secondary, audioURL: audioURL, language: language, model: model) }
+                do { return try await transcribeWith(secondary, audioURL: audioURL, language: language,
+                                                     model: await AIProvider.model(for: secondary)) }
                 catch { throw TranscriptionError.wrap(error, provider: secondary) }
             }
             throw TranscriptionError.wrap(error, provider: primary)

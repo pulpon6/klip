@@ -129,6 +129,7 @@ final class Settings: ObservableObject {
         static let detectRem  = "detectRemoteSource"
         static let transModel = "transcriptionModel"
         static let geminiModel = "geminiModel"
+        static let localModel = "localWhisperModel"
         static let transLang  = "transcriptionLanguage"
         static let aiProv     = "aiProvider"
         static let transFallback = "transcriptionFallback"
@@ -169,8 +170,10 @@ final class Settings: ObservableObject {
     @Published var transcriptionModel: String { didSet { d.set(transcriptionModel, forKey: K.transModel) } }
     /// Modelo de Google Gemini para transcripción (configurable; antes fijo en "gemini-flash-latest").
     @Published var geminiModel: String { didSet { d.set(geminiModel, forKey: K.geminiModel) } }
+    /// Modelo de mlx_whisper para el proveedor "local" (repo de Hugging Face, p. ej. mlx-community/whisper-large-v3-turbo).
+    @Published var localWhisperModel: String { didSet { d.set(localWhisperModel, forKey: K.localModel) } }
     @Published var transcriptionLanguage: String { didSet { d.set(transcriptionLanguage, forKey: K.transLang) } }
-    /// Proveedor de IA para transcripción: "openai" o "gemini".
+    /// Proveedor de transcripción: "openai", "gemini" o "local" (mlx_whisper en la Mac).
     @Published var aiProvider: String { didSet { d.set(aiProvider, forKey: K.aiProv) } }
     /// Si el proveedor elegido (Gemini) falla, reintenta con OpenAI cuando haya clave.
     @Published var transcriptionFallback: Bool { didSet { d.set(transcriptionFallback, forKey: K.transFallback) } }
@@ -270,6 +273,7 @@ final class Settings: ObservableObject {
         detectRemoteSource = d.object(forKey: K.detectRem) as? Bool ?? true
         transcriptionModel = d.string(forKey: K.transModel) ?? "gpt-4o-mini-transcribe"
         geminiModel = d.string(forKey: K.geminiModel) ?? "gemini-flash-latest"
+        localWhisperModel = d.string(forKey: K.localModel) ?? LocalWhisperClient.defaultModel
         transcriptionLanguage = d.string(forKey: K.transLang) ?? "es"
         aiProvider = d.string(forKey: K.aiProv) ?? "openai"
         transcriptionFallback = d.object(forKey: K.transFallback) as? Bool ?? true
