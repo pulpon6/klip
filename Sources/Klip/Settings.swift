@@ -275,7 +275,8 @@ final class Settings: ObservableObject {
         geminiModel = d.string(forKey: K.geminiModel) ?? "gemini-flash-latest"
         localWhisperModel = d.string(forKey: K.localModel) ?? LocalWhisperClient.defaultModel
         transcriptionLanguage = d.string(forKey: K.transLang) ?? "es"
-        aiProvider = d.string(forKey: K.aiProv) ?? "openai"
+        // Sin preferencia guardada: si hay mlx_whisper instalado, transcribir en local (no pide API key).
+        aiProvider = d.string(forKey: K.aiProv) ?? (LocalWhisperClient.shared.isInstalled ? "local" : "openai")
         transcriptionFallback = d.object(forKey: K.transFallback) as? Bool ?? true
         alwaysOnTop = d.object(forKey: K.alwaysOnTop) as? Bool ?? false
         overrideSystemCapture = d.object(forKey: K.overrideCmd4) as? Bool ?? false
